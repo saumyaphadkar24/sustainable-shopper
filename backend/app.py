@@ -99,6 +99,8 @@ def try_on():
             timeout=30  # 30 seconds timeout for initial request
         )
         
+        print(run_response.text)
+        
         if run_response.status_code != 200:
             return jsonify({
                 'error': f'API request failed with status code {run_response.status_code}',
