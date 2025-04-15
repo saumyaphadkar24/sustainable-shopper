@@ -6,6 +6,11 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 import base64
+from suggestions import classify_with_gpt_vision
+
+
+from dotenv import load_dotenv
+load_dotenv()
 
 # Initialize Flask app
 app = Flask(__name__, static_folder='../frontend/build')
@@ -19,11 +24,21 @@ API_KEY = os.environ.get('FASHN_AI_API_KEY', '')  # Get API key from environment
 MAX_POLLING_TIME = 120  # Maximum polling time in seconds
 POLLING_INTERVAL = 2  # Time between status checks in seconds
 
+print("Loaded API KEY:", API_KEY)
+
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max upload size
 
 # Create uploads directory if it doesn't exist
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+def analyze_result_image(base64_img):
+    temp_path = "temp_result.jpg"
+    with open(temp_path, "wb") as f:
+        f.write(base64.b64decode(base64_img))
+    suggestion = classify_with_gpt_vision(temp_path)
+    os.remove(temp_path)
+    return suggestion
 
 def allowed_file(filename):
     return '.' in filename and \
@@ -91,7 +106,14 @@ def try_on():
             }), 500
         
         # Get the prediction ID
-        run_data = run_response.json()
+        try:
+            run_data = run_response.json()
+        except Exception as e:
+            return jsonify({
+                'error': 'Response is not valid JSON',
+                'raw_response': run_response.text,
+                'exception': str(e)
+            }), 500
         prediction_id = run_data.get("id")
         
         if not prediction_id:
@@ -112,15 +134,33 @@ def try_on():
                     'details': status_response.text
                 }), 500
             
-            status_data = status_response.json()
+            try:
+                status_data = status_response.json()
+            except Exception as e:
+                return jsonify({
+                    'error': 'Status response is not valid JSON',
+                    'raw_response': status_response.text,
+                    'exception': str(e)
+                }), 500
             status = status_data.get("status")
             
+            # if status == "completed":
+            #     # Success! Return the output data to the frontend
+            #     return jsonify({
+            #         'status': 'success',
+            #         'result_image': status_data.get("output"),
+            #         'prediction_id': prediction_id
+            #     })
+                
             if status == "completed":
                 # Success! Return the output data to the frontend
+                result_image = status_data.get("output")
+                suggestion = analyze_result_image(result_image)
                 return jsonify({
                     'status': 'success',
-                    'result_image': status_data.get("output"),
-                    'prediction_id': prediction_id
+                    'result_image': result_image,
+                    'prediction_id': prediction_id,
+                    'suggestion': suggestion
                 })
             
             elif status in ["starting", "in_queue", "processing"]:
@@ -154,5 +194,5 @@ def serve(path):
     return send_from_directory(app.static_folder, 'index.html')
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
+    port = int(os.environ.get('PORT', 5001))
     app.run(host='0.0.0.0', port=port, debug=True)

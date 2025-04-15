@@ -1,0 +1,12 @@
+# Ignore macOS system files
+.DS_Store
+**/.DS_Store
+
+# Python cache
+__pycache__/
+
+# Node build artifacts
+frontend/build/
+
+# Lock files if not needed
+package-lock.json
