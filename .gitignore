@@ -3,3 +3,6 @@ backend/.env
 
 # Ignore node_modules
 frontend/node_modules/
+
+# Ignore the virtual environment
+venv/

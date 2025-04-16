@@ -1,0 +1,131 @@
+[
+  {
+    "name": "Men's Gremmie Crew Tee",
+    "price": "$60.00",
+    "url": "https://www.toadandco.com/collections/all-mens-clothing/products/mens-gremmie-crew-tee-salt",
+    "image_urls": [
+      "https://www.toadandco.com/cdn/shop/files/T2002501-Salt-1_2048x2048.jpg?v=1735947658",
+      "https://www.toadandco.com/cdn/shop/files/T2002501-Salt-2_2048x2048.jpg?v=1735947658",
+      "https://www.toadandco.com/cdn/shop/files/T2002501-Salt-3_2048x2048.jpg?v=1735947658",
+      "https://www.toadandco.com/cdn/shop/files/T2002501-Salt-Fabric_2048x2048.jpg?v=1736898918"
+    ],
+    "success": true,
+    "category": "men"
+  },
+  {
+    "name": "Mission Ridge Pant",
+    "price": "$90.00",
+    "url": "https://www.toadandco.com/collections/all-mens-clothing/products/mission-ridge-pant-tabac-vintage-wash",
+    "image_urls": [
+      "https://www.toadandco.com/cdn/shop/files/T2441411-Tabac_Vintage_Wash-1_2048x2048.jpg?v=1692139774",
+      "https://www.toadandco.com/cdn/shop/files/T2441411-Tabac_Vintage_Wash-2_2048x2048.jpg?v=1692139774"
+    ],
+    "success": true,
+    "category": "men"
+  },
+  {
+    "name": "Framer II Long Sleeve Crew",
+    "price": "$60.00",
+    "url": "https://www.toadandco.com/collections/all-mens-clothing/products/framer-ii-long-sleeve-crew-raisin",
+    "image_urls": [
+      "https://www.toadandco.com/cdn/shop/files/T2241200-Raisin-1_2048x2048.jpg?v=1719434265",
+      "https://www.toadandco.com/cdn/shop/files/T2241200-Raisin-2_2048x2048.jpg?v=1719434265"
+    ],
+    "success": true,
+    "category": "men"
+  },
+  {
+    "name": "Men's Nord Reversible Henley",
+    "price": "$80.00",
+    "url": "https://www.toadandco.com/collections/all-mens-clothing/products/mens-nord-reversible-henley-salt",
+    "image_urls": [
+      "https://www.toadandco.com/cdn/shop/files/T2241400-Salt-1_2048x2048.jpg?v=1719434267",
+      "https://www.toadandco.com/cdn/shop/files/T2241400-Salt-2_2048x2048.jpg?v=1719434266",
+      "https://www.toadandco.com/cdn/shop/files/T2241400-Salt-3_2048x2048.jpg?v=1719434266",
+      "https://www.toadandco.com/cdn/shop/files/T2241400-Salt-4_2048x2048.jpg?v=1719434267",
+      "https://www.toadandco.com/cdn/shop/files/T2241400-Salt-5_2048x2048.jpg?v=1719434266",
+      "https://www.toadandco.com/cdn/shop/files/T2241400-Salt-6_2048x2048.jpg?v=1719434267",
+      "https://www.toadandco.com/cdn/shop/files/T2241400-Salt-7_2048x2048.jpg?v=1728668207"
+    ],
+    "success": true,
+    "category": "men"
+  },
+  {
+    "name": "Tempo Crew Pocket Tee",
+    "price": "$50.00",
+    "url": "https://www.toadandco.com/collections/all-mens-clothing/products/tempo-crew-pocket-tee-soot",
+    "image_urls": [
+      "https://www.toadandco.com/cdn/shop/files/T2002504-Soot-1_2048x2048.jpg?v=1735947663",
+      "https://www.toadandco.com/cdn/shop/files/T2002504-Soot-2_2048x2048.jpg?v=1735947663",
+      "https://www.toadandco.com/cdn/shop/files/T2002504-Soot-3_2048x2048.jpg?v=1735947663",
+      "https://www.toadandco.com/cdn/shop/files/T2002504-Soot-6_2048x2048.jpg?v=1735947663",
+      "https://www.toadandco.com/cdn/shop/files/T2002504-Soot-8_2048x2048.jpg?v=1735947663"
+    ],
+    "success": true,
+    "category": "men"
+  },
+  {
+    "name": "Honcho Short Sleeve Shirt",
+    "price": "$65.00",
+    "url": "https://www.toadandco.com/collections/all-mens-clothing/products/honcho-short-sleeve-shirt-rust",
+    "image_urls": [
+      "https://www.toadandco.com/cdn/shop/files/T2002013-Rust-1_2048x2048.jpg?v=1705438159",
+      "https://www.toadandco.com/cdn/shop/files/T2002013-Rust-2_2048x2048.jpg?v=1705438159",
+      "https://www.toadandco.com/cdn/shop/files/T2002013-Rust-3_2048x2048.jpg?v=1705438159"
+    ],
+    "success": true,
+    "category": "men"
+  },
+  {
+    "name": "Tempo Short Sleeve Polo",
+    "price": "$68.00",
+    "url": "https://www.toadandco.com/collections/all-mens-clothing/products/tempo-short-sleeve-polo-true-navy",
+    "image_urls": [
+      "https://www.toadandco.com/cdn/shop/files/T2002912-True_Navy-1_2048x2048.jpg?v=1705440254",
+      "https://www.toadandco.com/cdn/shop/files/T2002912-True_Navy-2_2048x2048.jpg?v=1705440254",
+      "https://www.toadandco.com/cdn/shop/files/T2002912-True_Navy-3_2048x2048.jpg?v=1705440254"
+    ],
+    "success": true,
+    "category": "men"
+  },
+  {
+    "name": "Men's Boundless Short",
+    "price": "$70.00",
+    "url": "https://www.toadandco.com/collections/all-mens-clothing/products/mens-boundless-short-pelican",
+    "image_urls": [
+      "https://www.toadandco.com/cdn/shop/files/T2312500-Pelican-1_2048x2048.jpg?v=1735947689",
+      "https://www.toadandco.com/cdn/shop/files/T2312500-Pelican-2_2048x2048.jpg?v=1735947689",
+      "https://www.toadandco.com/cdn/shop/files/T2312500-Pelican-3_2048x2048.jpg?v=1735947689"
+    ],
+    "success": true,
+    "category": "men"
+  },
+  {
+    "name": "Honcho Short Sleeve Shirt",
+    "price": "$65.00",
+    "url": "https://www.toadandco.com/collections/all-mens-clothing/products/honcho-short-sleeve-shirt-high-tide-ii",
+    "image_urls": [
+      "https://www.toadandco.com/cdn/shop/files/T2002013-High_Tide_II-1_a5dc38d2-7fbc-4d15-8310-a36826338270_2048x2048.jpg?v=1736874112",
+      "https://www.toadandco.com/cdn/shop/files/T2002013-High_Tide_II-2_c2833a92-d577-4403-b8f4-a071735eed0d_2048x2048.jpg?v=1736874112",
+      "https://www.toadandco.com/cdn/shop/files/T2002013-High_Tide_II-3_646c786a-0b2a-4bcf-859a-d48d306479bc_2048x2048.jpg?v=1736874112"
+    ],
+    "success": true,
+    "category": "men"
+  },
+  {
+    "name": "Treescape Shirt",
+    "price": "$75.00",
+    "url": "https://www.toadandco.com/collections/all-mens-clothing/products/treescape-shirt-north-shore",
+    "image_urls": [
+      "https://www.toadandco.com/cdn/shop/files/T2002404-North_Shore-1_2048x2048.jpg?v=1735947657",
+      "https://www.toadandco.com/cdn/shop/files/T2002404-North_Shore-2_2048x2048.jpg?v=1735947657",
+      "https://www.toadandco.com/cdn/shop/files/T2002404-North_Shore-3_2048x2048.jpg?v=1735947657",
+      "https://www.toadandco.com/cdn/shop/files/T2002404-North_Shore-4_2048x2048.jpg?v=1735947657",
+      "https://www.toadandco.com/cdn/shop/files/T2002404-North_Shore-5_2048x2048.jpg?v=1738106367",
+      "https://www.toadandco.com/cdn/shop/files/T2002404-North_Shore-6_2048x2048.jpg?v=1738106367",
+      "https://www.toadandco.com/cdn/shop/files/T2002404-North_Shore-Fabric_2048x2048.jpg?v=1738106367"
+    ],
+    "success": true,
+    "category": "men"
+  }
+]
