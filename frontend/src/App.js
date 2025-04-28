@@ -7,6 +7,7 @@ import TryOnPage from './components/TryOnPage';
 import LandingPage from './components/LandingPage';
 import AuthPage from './components/AuthPage';
 import HistoryPage from './components/HistoryPage'; 
+import Wardrobe from './components/Wardrobe';
 import { AuthProvider, useAuth } from './components/AuthContext';
 
 // Protected route component
@@ -78,6 +79,15 @@ function AppContent() {
             element={
               <ProtectedRoute>
                 <HistoryPage />
+              </ProtectedRoute>
+            } 
+          />
+          
+          <Route 
+            path="/wardrobe" 
+            element={
+              <ProtectedRoute>
+                <Wardrobe />
               </ProtectedRoute>
             } 
           />

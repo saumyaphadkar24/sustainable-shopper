@@ -1,8 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 function ResultDisplay({ result, onReset }) {
-  // The API now returns the result image URL in result.result_image
+  const [showGarmentModal, setShowGarmentModal] = useState(false);
+  
+  // Check for result_image and garment_image
   const resultImage = result?.result_image;
+  const garmentImage = result?.garment_image;
   
   if (!resultImage) {
     return (
@@ -16,12 +19,28 @@ function ResultDisplay({ result, onReset }) {
     );
   }
 
+  const toggleGarmentModal = () => {
+    setShowGarmentModal(!showGarmentModal);
+  };
+
   return (
     <div className="result-container">
       <h3>Your Virtual Try-On Result</h3>
       
       <div className="result-image-container">
-        <img src={resultImage} alt="Virtual try-on result" className="result-image" />
+        <img 
+          src={resultImage} 
+          alt="Virtual try-on result" 
+          className="result-image" 
+          onClick={toggleGarmentModal} 
+        />
+        {garmentImage && (
+          <div className="view-garment">
+            <button className="btn btn-small" onClick={toggleGarmentModal}>
+              <i className="fas fa-eye"></i> View Original Garment
+            </button>
+          </div>
+        )}
       </div>
       
       <div className="result-actions">
@@ -48,6 +67,30 @@ function ResultDisplay({ result, onReset }) {
           sustainable future.
         </p>
       </div>
+      
+      {showGarmentModal && garmentImage && (
+        <div className="modal-overlay" onClick={toggleGarmentModal}>
+          <div className="garment-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={toggleGarmentModal}>
+              <i className="fas fa-times"></i>
+            </button>
+            <h4>Original Garment</h4>
+            <div className="garment-image-container">
+              <img src={garmentImage} alt="Original garment" className="garment-image" />
+            </div>
+            <div className="comparison-container">
+              <div className="comparison-image">
+                <h5>Original</h5>
+                <img src={garmentImage} alt="Original garment" />
+              </div>
+              <div className="comparison-image">
+                <h5>Try-On Result</h5>
+                <img src={resultImage} alt="Virtual try-on result" />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

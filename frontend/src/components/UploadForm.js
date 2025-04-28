@@ -1,10 +1,13 @@
 import React, { useState, useRef } from 'react';
+import MyPhotos from './MyPhotos';
 
 function UploadForm({ onSubmit, loading }) {
   const [modelImage, setModelImage] = useState(null);
   const [garmentImage, setGarmentImage] = useState(null);
   const [modelPreview, setModelPreview] = useState(null);
   const [garmentPreview, setGarmentPreview] = useState(null);
+  const [useExistingPhoto, setUseExistingPhoto] = useState(false);
+  const [selectedPhotoId, setSelectedPhotoId] = useState(null);
   
   const modelInputRef = useRef(null);
   const garmentInputRef = useRef(null);
@@ -18,6 +21,8 @@ function UploadForm({ onSubmit, loading }) {
         setModelPreview(reader.result);
       };
       reader.readAsDataURL(file);
+      setUseExistingPhoto(false);
+      setSelectedPhotoId(null);
     }
   };
 
@@ -33,19 +38,36 @@ function UploadForm({ onSubmit, loading }) {
     }
   };
 
+  const handlePhotoSelect = (photoId) => {
+    setSelectedPhotoId(photoId);
+    setModelImage(null);
+    setModelPreview(null);
+    if (modelInputRef.current) modelInputRef.current.value = '';
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    if (!modelImage || !garmentImage) {
+    if ((!modelImage && !selectedPhotoId) || !garmentImage) {
       alert('Please select both a model image and a garment image');
       return;
     }
     
     const formData = new FormData();
-    formData.append('model_image', modelImage);
-    formData.append('garment_image', garmentImage);
     
-    onSubmit(formData);
+    if (selectedPhotoId) {
+      // If using an existing photo
+      formData.append('photo_id', selectedPhotoId);
+      formData.append('garment_image', garmentImage);
+      
+      onSubmit(formData, true); // Second parameter indicates using saved photo
+    } else {
+      // If uploading a new photo
+      formData.append('model_image', modelImage);
+      formData.append('garment_image', garmentImage);
+      
+      onSubmit(formData, false);
+    }
   };
 
   const resetForm = () => {
@@ -53,6 +75,8 @@ function UploadForm({ onSubmit, loading }) {
     setGarmentImage(null);
     setModelPreview(null);
     setGarmentPreview(null);
+    setUseExistingPhoto(false);
+    setSelectedPhotoId(null);
     
     if (modelInputRef.current) modelInputRef.current.value = '';
     if (garmentInputRef.current) garmentInputRef.current.value = '';
@@ -61,42 +85,70 @@ function UploadForm({ onSubmit, loading }) {
   return (
     <div className="upload-form-container">
       <form onSubmit={handleSubmit} className="upload-form">
+        <div className="upload-toggle">
+          <button
+            type="button"
+            className={`toggle-btn ${!useExistingPhoto ? 'active' : ''}`}
+            onClick={() => setUseExistingPhoto(false)}
+          >
+            Upload New Photo
+          </button>
+          <button
+            type="button"
+            className={`toggle-btn ${useExistingPhoto ? 'active' : ''}`}
+            onClick={() => setUseExistingPhoto(true)}
+          >
+            Use Saved Photo
+          </button>
+        </div>
+        
         <div className="upload-columns">
           <div className="upload-column">
             <h3>Your Photo</h3>
-            <div className={`upload-area ${modelPreview ? 'has-preview' : ''}`}>
-              {modelPreview ? (
-                <div className="preview-container">
-                  <img src={modelPreview} alt="Your preview" className="image-preview" />
-                  <button 
-                    type="button" 
-                    className="btn btn-small btn-remove" 
-                    onClick={() => {
-                      setModelImage(null);
-                      setModelPreview(null);
-                      if (modelInputRef.current) modelInputRef.current.value = '';
-                    }}
-                  >
-                    Remove
-                  </button>
-                </div>
-              ) : (
-                <div className="upload-placeholder">
-                  <i className="fas fa-user"></i>
-                  <p>Upload a full-body photo of yourself</p>
-                  <label className="btn btn-secondary">
-                    Choose File
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/jpg"
-                      onChange={handleModelChange}
-                      ref={modelInputRef}
-                      hidden
-                    />
-                  </label>
-                </div>
-              )}
-            </div>
+            
+            {useExistingPhoto ? (
+              <div className="saved-photos-container">
+                <MyPhotos 
+                  onPhotoSelect={handlePhotoSelect} 
+                  selectedPhotoId={selectedPhotoId}
+                  isSelectionMode={true}
+                />
+              </div>
+            ) : (
+              <div className={`upload-area ${modelPreview ? 'has-preview' : ''}`}>
+                {modelPreview ? (
+                  <div className="preview-container">
+                    <img src={modelPreview} alt="Your preview" className="image-preview" />
+                    <button 
+                      type="button" 
+                      className="btn btn-small btn-remove" 
+                      onClick={() => {
+                        setModelImage(null);
+                        setModelPreview(null);
+                        if (modelInputRef.current) modelInputRef.current.value = '';
+                      }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <div className="upload-placeholder">
+                    <i className="fas fa-user"></i>
+                    <p>Upload a full-body photo of yourself</p>
+                    <label className="btn btn-secondary">
+                      Choose File
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/jpg"
+                        onChange={handleModelChange}
+                        ref={modelInputRef}
+                        hidden
+                      />
+                    </label>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           
           <div className="upload-column">
@@ -144,7 +196,7 @@ function UploadForm({ onSubmit, loading }) {
           <button 
             type="submit" 
             className="btn btn-primary" 
-            disabled={!modelImage || !garmentImage || loading}
+            disabled={(!modelImage && !selectedPhotoId) || !garmentImage || loading}
           >
             {loading ? 'Processing...' : 'Try It On'}
           </button>

@@ -6,13 +6,13 @@ function HistoryPage() {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const { currentUser } = useAuth();
+  const [selectedItem, setSelectedItem] = useState(null);
+  const { currentUser, token } = useAuth();
 
   useEffect(() => {
     const fetchHistory = async () => {
       try {
-        // Get the JWT token
-        const token = localStorage.getItem('token');
+        setLoading(true);
         
         const response = await fetch('/api/history', {
           headers: {
@@ -26,15 +26,27 @@ function HistoryPage() {
         
         const data = await response.json();
         setHistory(data);
+        setError(null);
       } catch (err) {
-        setError(err.message);
+        setError(err.message || 'An error occurred while fetching your history');
+        console.error('Error fetching history:', err);
       } finally {
         setLoading(false);
       }
     };
     
-    fetchHistory();
-  }, []);
+    if (token) {
+      fetchHistory();
+    }
+  }, [token]);
+
+  const openDetailModal = (item) => {
+    setSelectedItem(item);
+  };
+
+  const closeDetailModal = () => {
+    setSelectedItem(null);
+  };
 
   if (loading) {
     return (
@@ -95,9 +107,14 @@ function HistoryPage() {
         ) : (
           <div className="history-grid">
             {history.map((item) => (
-              <div key={item.id} className="history-card">
+              <div key={item.id} className="history-card" onClick={() => openDetailModal(item)}>
                 <div className="history-image">
                   <img src={item.result_image} alt="Try-on result" />
+                  <div className="view-details">
+                    <button className="btn btn-small">
+                      <i className="fas fa-search-plus"></i> View Details
+                    </button>
+                  </div>
                 </div>
                 <div className="history-info">
                   <p className="history-date">
@@ -109,12 +126,54 @@ function HistoryPage() {
                     className="btn btn-small btn-secondary"
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    Download
+                    <i className="fas fa-download"></i>
                   </a>
                 </div>
               </div>
             ))}
+          </div>
+        )}
+        
+        {/* Detail Modal */}
+        {selectedItem && (
+          <div className="modal-overlay" onClick={closeDetailModal}>
+            <div className="history-detail-modal" onClick={(e) => e.stopPropagation()}>
+              <button className="modal-close" onClick={closeDetailModal}>
+                <i className="fas fa-times"></i>
+              </button>
+              <h3>Try-On Details</h3>
+              <p className="detail-date">
+                {new Date(selectedItem.created_at * 1000).toLocaleDateString()}
+              </p>
+              
+              <div className="detail-images">
+                <div className="detail-image">
+                  <h4>Original Garment</h4>
+                  <img src={selectedItem.garment_image} alt="Original garment" />
+                </div>
+                <div className="detail-image">
+                  <h4>Try-On Result</h4>
+                  <img src={selectedItem.result_image} alt="Try-on result" />
+                </div>
+              </div>
+              
+              <div className="detail-actions">
+                <a 
+                  href={selectedItem.result_image} 
+                  download="virtual-tryon.jpg" 
+                  className="btn btn-primary"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Download Result
+                </a>
+                <Link to="/try-on" className="btn btn-secondary">
+                  New Try-On
+                </Link>
+              </div>
+            </div>
           </div>
         )}
       </div>

@@ -18,7 +18,7 @@ function TryOnPage() {
     }
   }, [isAuthenticated, navigate]);
 
-  const handleSubmit = async (formData) => {
+  const handleSubmit = async (formData, usingSavedPhoto = false) => {
     setLoading(true);
     setError(null);
     setResult(null);
@@ -29,7 +29,10 @@ function TryOnPage() {
         throw new Error('You must be logged in to use this feature');
       }
       
-      const response = await fetch('/api/try-on', {
+      // Choose the appropriate endpoint based on whether using a saved photo
+      const endpoint = usingSavedPhoto ? '/api/try-on-with-saved' : '/api/try-on';
+      
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
