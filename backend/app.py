@@ -6,10 +6,17 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 import base64
+from bson.objectid import ObjectId
+from flask_bcrypt import Bcrypt
+
+# Import database and authentication modules
+from db import test_connection, users, try_on_history
+from auth import token_required, register_user, authenticate_user, generate_token
 
 # Initialize Flask app
 app = Flask(__name__, static_folder='../frontend/build')
 CORS(app)  # Enable CORS for all routes
+bcrypt = Bcrypt(app)
 
 # Configuration
 UPLOAD_FOLDER = 'uploads'
@@ -21,16 +28,88 @@ POLLING_INTERVAL = 2  # Time between status checks in seconds
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max upload size
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-for-development-only')
 
 # Create uploads directory if it doesn't exist
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# Check database connection on startup
+with app.app_context():
+    test_connection()
 
 def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+# Authentication Routes
+@app.route('/api/register', methods=['POST'])
+def register():
+    data = request.get_json()
+    
+    # Validate input
+    if not data or not data.get('email') or not data.get('password') or not data.get('name'):
+        return jsonify({'error': 'Email, password, and name are required'}), 400
+    
+    # Register the user
+    user_id, error = register_user(data['email'], data['password'], data['name'])
+    
+    if error:
+        return jsonify({'error': error}), 400
+    
+    # Generate token
+    token = generate_token(user_id)
+    
+    return jsonify({
+        'message': 'User registered successfully',
+        'token': token, 
+        'user': {
+            'id': user_id,
+            'email': data['email'],
+            'name': data['name']
+        }
+    }), 201
+
+@app.route('/api/login', methods=['POST'])
+def login():
+    data = request.get_json()
+    
+    # Validate input
+    if not data or not data.get('email') or not data.get('password'):
+        return jsonify({'error': 'Email and password are required'}), 400
+    
+    # Authenticate the user
+    user, error = authenticate_user(data['email'], data['password'])
+    
+    if error:
+        return jsonify({'error': error}), 401
+    
+    # Generate token
+    token = generate_token(str(user['_id']))
+    
+    return jsonify({
+        'message': 'Login successful',
+        'token': token,
+        'user': {
+            'id': str(user['_id']),
+            'email': user['email'],
+            'name': user['name']
+        }
+    }), 200
+
+@app.route('/api/user', methods=['GET'])
+@token_required
+def get_user(current_user):
+    # Return the current user's information
+    return jsonify({
+        'id': str(current_user['_id']),
+        'email': current_user['email'],
+        'name': current_user['name']
+    }), 200
+
+# Virtual Try-On Route (protected)
 @app.route('/api/try-on', methods=['POST'])
-def try_on():
+@token_required
+def try_on(current_user):
     if 'model_image' not in request.files or 'garment_image' not in request.files:
         return jsonify({'error': 'Both model and garment images are required'}), 400
     
@@ -116,10 +195,24 @@ def try_on():
             status = status_data.get("status")
             
             if status == "completed":
-                # Success! Return the output data to the frontend
+                # Success! Add to user's history
+                result_image = status_data.get("output")
+                
+                # Create history record
+                history_record = {
+                    'user_id': str(current_user['_id']),
+                    'result_image': result_image,
+                    'prediction_id': prediction_id,
+                    'created_at': time.time()
+                }
+                
+                # Save to database
+                try_on_history.insert_one(history_record)
+                
+                # Return the output data to the frontend
                 return jsonify({
                     'status': 'success',
-                    'result_image': status_data.get("output"),
+                    'result_image': result_image,
                     'prediction_id': prediction_id
                 })
             
@@ -144,6 +237,25 @@ def try_on():
         
     except Exception as e:
         return jsonify({'error': f'API request failed: {str(e)}'}), 500
+
+# History endpoint
+@app.route('/api/history', methods=['GET'])
+@token_required
+def get_history(current_user):
+    # Get user's try-on history
+    history = list(try_on_history.find({'user_id': str(current_user['_id'])}).sort('created_at', -1))
+    
+    # Format for JSON response
+    formatted_history = []
+    for item in history:
+        formatted_history.append({
+            'id': str(item['_id']),
+            'result_image': item['result_image'],
+            'prediction_id': item['prediction_id'],
+            'created_at': item['created_at']
+        })
+    
+    return jsonify(formatted_history), 200
 
 # Serve React frontend in production
 @app.route('/', defaults={'path': ''})

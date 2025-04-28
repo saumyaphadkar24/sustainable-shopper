@@ -1,80 +1,102 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import './styles/main.css';
 import Header from './components/Header';
-import UploadForm from './components/UploadForm';
-import ResultDisplay from './components/ResultDisplay';
 import Footer from './components/Footer';
+import TryOnPage from './components/TryOnPage';
+import LandingPage from './components/LandingPage';
+import AuthPage from './components/AuthPage';
+import HistoryPage from './components/HistoryPage'; 
+import { AuthProvider, useAuth } from './components/AuthContext';
 
-function App() {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [result, setResult] = useState(null);
+// Protected route component
+const ProtectedRoute = ({ children }) => {
+  const { isAuthenticated, loading, authChecked } = useAuth();
+  
+  if (loading) {
+    return <div className="loading-screen">Loading...</div>;
+  }
+  
+  // Only redirect after authentication has been checked
+  if (authChecked && !isAuthenticated()) {
+    return <Navigate to="/login" />;
+  }
+  
+  return children;
+};
 
-  const handleSubmit = async (formData) => {
-    setLoading(true);
-    setError(null);
-    setResult(null);
-    
-    try {
-      const response = await fetch('/api/try-on', {
-        method: 'POST',
-        body: formData,
-      });
-      
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Something went wrong');
-      }
-      
-      setResult(data);
-    } catch (err) {
-      setError(err.message || 'An error occurred while processing your request');
-    } finally {
-      setLoading(false);
-    }
-  };
+function AppContent() {
+  const { loading, authChecked } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="app">
+        <Header />
+        <main className="container">
+          <div className="loading-screen">
+            <div className="loader"></div>
+            <p>Loading Sustainable Shopper...</p>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="app">
       <Header />
-      <main className="container">
-        <div className="app-description">
-          <h2>Virtual Try-On Experience</h2>
-          <p>
-            Upload a photo of yourself and a garment you're interested in to see how it would look on you.
-            Our sustainable approach helps reduce returns and waste in the fashion industry.
-          </p>
-        </div>
-        
-        {!result && (
-          <UploadForm onSubmit={handleSubmit} loading={loading} />
-        )}
-        
-        {error && (
-          <div className="error-message">
-            <p>{error}</p>
-            <button 
-              className="btn btn-primary" 
-              onClick={() => setError(null)}
-            >
-              Try Again
-            </button>
-          </div>
-        )}
-        
-        {result && (
-          <ResultDisplay 
-            result={result} 
-            onReset={() => {
-              setResult(null);
-              setError(null);
-            }} 
+      <main>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          
+          <Route 
+            path="/login" 
+            element={
+              authChecked && <AuthPage initialMode="login" />
+            } 
           />
-        )}
+          
+          <Route 
+            path="/signup" 
+            element={
+              authChecked && <AuthPage initialMode="signup" />
+            } 
+          />
+          
+          <Route 
+            path="/try-on" 
+            element={
+              <ProtectedRoute>
+                <TryOnPage />
+              </ProtectedRoute>
+            } 
+          />
+          
+          <Route 
+            path="/history" 
+            element={
+              <ProtectedRoute>
+                <HistoryPage />
+              </ProtectedRoute>
+            } 
+          />
+          
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
       </main>
       <Footer />
     </div>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </Router>
   );
 }
 
