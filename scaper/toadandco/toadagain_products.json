@@ -1,0 +1,56 @@
+[
+  {
+    "name": "Sunkissed Liv SL Jumpsuit",
+    "price": "$81",
+    "url": "https://toadagain.toadandco.com/product/sunkissed-liv-sl-jumpsuit-iris-butterfly-print---c7238ab4-a68c-5ea6-a963-7c1c7dfab813?selectedVariants=%7B%22color%22%3A%22Iris%20Butterfly%20Print%22%2C%22size%22%3A%22S%22%7D",
+    "image_urls": [
+      "https://res.cloudinary.com/archive-resale/image/upload/toadandco/processed_images/T1782103-972-0",
+      "https://res.cloudinary.com/archive-resale/image/upload/toadandco/processed_images/T1782103-972-2",
+      "https://res.cloudinary.com/archive-resale/image/upload/toadandco/processed_images/T1782103-972-1"
+    ],
+    "success": true
+  },
+  {
+    "name": "W'S Karuna Cord 5 Pkt Skinny Pant",
+    "price": "$67",
+    "url": "https://toadagain.toadandco.com/product/ws-karuna-cord-5-pkt-skinny-pant-storm---b2e21cf9-ac9a-53fa-90d5-4bfb6a6c4863?selectedVariants=%7B%22color%22%3A%22Storm%22%2C%22size%22%3A%228%22%7D",
+    "image_urls": [
+      "https://res.cloudinary.com/archive-resale/image/upload/v1709668076/toadandco/product-creation/mw4tpyabtemi2gkesipc.png",
+      "https://res.cloudinary.com/archive-resale/image/upload/v1709668068/toadandco/product-creation/lyzs5ys43baoe6nsdhtl.png",
+      "https://res.cloudinary.com/archive-resale/image/upload/v1709668088/toadandco/product-creation/gwpnpmiuswlmrgl9hxyp.png"
+    ],
+    "success": true
+  },
+  {
+    "name": "Windmere II Short Sleeve Dress",
+    "price": "$56",
+    "url": "https://toadagain.toadandco.com/product/windmere-ii-ss-dress-gooseberry-wide-stripe---aaf8670c-c9ae-5df4-8854-e98b9ba0161d?selectedVariants=%7B%22color%22%3A%22Gooseberry%20Wide%20Stripe%22%2C%22size%22%3A%22S%22%7D",
+    "image_urls": [
+      "https://res.cloudinary.com/archive-resale/image/upload/toadandco/processed_images/T1781910-720-1",
+      "https://res.cloudinary.com/archive-resale/image/upload/toadandco/processed_images/T1781910-720-2"
+    ],
+    "success": true
+  },
+  {
+    "name": "W'S Daybreaker Hemp Jumpsuit",
+    "price": "$63",
+    "url": "https://toadagain.toadandco.com/product/ws-daybreaker-hemp-jumpsuit-silver-pine---5ef337aa-229f-5d9c-9b14-01f3d4f35b5a?selectedVariants=%7B%22color%22%3A%22Silver%20Pine%22%2C%22size%22%3A%22M%22%7D",
+    "image_urls": [
+      "https://res.cloudinary.com/archive-resale/image/upload/toadandco/processed_images/T1442304-321-2",
+      "https://res.cloudinary.com/archive-resale/image/upload/toadandco/processed_images/T1442304-321-1",
+      "https://res.cloudinary.com/archive-resale/image/upload/toadandco/processed_images/T1442304-321-0"
+    ],
+    "success": true
+  },
+  {
+    "name": "W'S Scouter Cord Pleated Pull On Pant",
+    "price": "$69",
+    "url": "https://toadagain.toadandco.com/product/ws-scouter-cord-pleated-pull-on-pant-honey-brown---0026646c-0b89-5504-b326-8f59954b9ce9?selectedVariants=%7B%22color%22%3A%22Honey%20Brown%22%2C%22size%22%3A%22M%22%7D",
+    "image_urls": [
+      "https://res.cloudinary.com/archive-resale/image/upload/toadandco/processed_images/T1441300-201-2",
+      "https://res.cloudinary.com/archive-resale/image/upload/toadandco/processed_images/T1441300-201-1",
+      "https://res.cloudinary.com/archive-resale/image/upload/toadandco/processed_images/T1441300-201-0"
+    ],
+    "success": true
+  }
+]
