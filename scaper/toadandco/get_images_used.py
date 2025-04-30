@@ -108,7 +108,7 @@ def main():
     
     # Set up Chrome options
     chrome_options = Options()
-    # chrome_options.add_argument("--headless")  # Run in headless mode
+    chrome_options.add_argument("--headless")  # Run in headless mode
     
     # Initialize browser
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
@@ -123,7 +123,6 @@ def main():
     try:
         # Initial scraping pass
         print("Initial scraping pass...")
-        i = 0
         for link in tqdm(product_links, desc="Scraping products", unit="product"):
             # Extract product details
             product_info = extract_product_details(driver, link)
@@ -139,9 +138,6 @@ def main():
             
             # Small delay between requests
             time.sleep(0.5)
-            i+=1
-            if i==5:
-                break
         
         # Retry products with errors or missing information
         print("\nRetrying products with errors or missing information...")
@@ -150,15 +146,16 @@ def main():
         
         # Find products that need retrying
         retry_indices = [i for i, product in enumerate(product_data) if needs_retry(product)]
+        counter = 1
         
         if retry_indices:
             # Use different wait times for retry
             retry_delays = [2, 3, 5]  # Different delays in seconds to try
             
             for delay in retry_delays:
-                if not retry_indices:
+                if not retry_indices or counter >= 5:
                     break  # No more products to retry
-                
+                counter += 1
                 print(f"\nRetry attempt with {delay} second wait time...")
                 still_failed = []
                 
@@ -191,7 +188,6 @@ def main():
                 
                 # Update retry_indices for next delay attempt
                 retry_indices = still_failed
-        print(product_data)
         # Save to JSON file
         output_file = 'scaper\\toadandco\\toadagain_products.json'
         with open(output_file, 'w', encoding='utf-8') as f:
