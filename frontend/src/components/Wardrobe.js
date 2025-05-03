@@ -15,12 +15,12 @@ function Wardrobe() {
   // Form state for adding/editing items
   const [itemForm, setItemForm] = useState({
     name: '',
-    description: '',
+    fit_description: '',
     tag: '',
     in_laundry: false,
     unavailable: false,
-    image: null,
-    imagePreview: null
+    images: [],
+    imagePreview: []
   });
 
   useEffect(() => {
@@ -28,6 +28,11 @@ function Wardrobe() {
     fetchTags();
   }, [token]);
 
+  useEffect(() => {
+    fetchWardrobeItems();
+    fetchTags();
+  }, [token]);
+  
   const fetchWardrobeItems = async () => {
     try {
       setLoading(true);
@@ -36,12 +41,21 @@ function Wardrobe() {
           'Authorization': `Bearer ${token}`
         }
       });
-
+  
       if (!response.ok) {
         throw new Error('Failed to fetch wardrobe items');
       }
-
+  
       const data = await response.json();
+      console.log("Fetched wardrobe items:", data); // Add this to debug
+      
+      // Check if images are properly present
+      data.forEach(item => {
+        if (!item.images || !Array.isArray(item.images) || item.images.length === 0) {
+          console.warn(`Item ${item.id} has no images or invalid image data`);
+        }
+      });
+      
       setItems(data);
       
       // Extract unique categories
@@ -81,44 +95,71 @@ function Wardrobe() {
       return;
     }
 
+    // Check if we already have 5 images
+    if (itemForm.imagePreview.length >= 5) {
+      setError('Maximum 5 images allowed.');
+      return;
+    }
+
     // Create preview
     const reader = new FileReader();
     reader.onload = () => {
       setItemForm({
         ...itemForm,
-        image: file,
-        imagePreview: reader.result
+        images: [...itemForm.images, file],
+        imagePreview: [...itemForm.imagePreview, reader.result]
       });
     };
     reader.readAsDataURL(file);
   };
 
+  const handleRemoveImage = (index) => {
+    const newImages = [...itemForm.images];
+    const newImagePreview = [...itemForm.imagePreview];
+
+    newImages.splice(index, 1);
+    newImagePreview.splice(index, 1);
+
+    setItemForm({
+      ...itemForm,
+      images: newImages,
+      imagePreview: newImagePreview
+    });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Validate form
     if (!itemForm.tag) {
       setError('Please select a category tag');
       return;
     }
-    
-    if (!itemForm.description && !itemForm.image) {
-      setError('Please provide either a description or an image');
+
+    if (itemForm.images.length === 0) {
+      setError('Please upload at least one image');
       return;
     }
-    
+
+    if (itemForm.images.length > 5) {
+      setError('Maximum 5 images allowed');
+      return;
+    }
+
     try {
+      setError(null);
       const formData = new FormData();
       formData.append('name', itemForm.name);
-      formData.append('description', itemForm.description);
+      formData.append('fit_description', itemForm.fit_description);
       formData.append('tag', itemForm.tag);
       formData.append('in_laundry', itemForm.in_laundry);
       formData.append('unavailable', itemForm.unavailable);
-      
-      if (itemForm.image) {
-        formData.append('image', itemForm.image);
-      }
-      
+
+      // Append multiple images
+      itemForm.images.forEach(image => {
+        formData.append('images[]', image);
+      });
+
       const response = await fetch('/api/wardrobe', {
         method: 'POST',
         headers: {
@@ -126,36 +167,35 @@ function Wardrobe() {
         },
         body: formData
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to add item to wardrobe');
       }
-      
+
       const newItem = await response.json();
-      
+
       // Update items list
       setItems([newItem, ...items]);
-      
+
       // Update categories if needed
       if (!categories.includes(newItem.category) && newItem.category !== 'All') {
         setCategories([...categories, newItem.category]);
       }
-      
+
       // Reset form
       setItemForm({
         name: '',
-        description: '',
+        fit_description: '',
         tag: '',
         in_laundry: false,
         unavailable: false,
-        image: null,
-        imagePreview: null
+        images: [],
+        imagePreview: []
       });
-      
+
       // Close modal
       setShowAddModal(false);
-      setError(null);
-      
+
     } catch (err) {
       setError('Error adding item to wardrobe. Please try again.');
       console.error('Error adding wardrobe item:', err);
@@ -167,10 +207,10 @@ function Wardrobe() {
       // Find the item
       const item = items.find(i => i.id === id);
       if (!item) return;
-      
+
       // Prepare data for update
       const updateData = { [field]: !item[field] };
-      
+
       // Send update request
       const response = await fetch(`/api/wardrobe/toggle/${id}`, {
         method: 'PATCH',
@@ -180,11 +220,11 @@ function Wardrobe() {
         },
         body: JSON.stringify(updateData)
       });
-      
+
       if (!response.ok) {
         throw new Error(`Failed to update item ${field}`);
       }
-      
+
       // Update local state
       setItems(items.map(i => {
         if (i.id === id) {
@@ -192,7 +232,7 @@ function Wardrobe() {
         }
         return i;
       }));
-      
+
     } catch (err) {
       setError(`Error updating item. Please try again.`);
       console.error('Error updating wardrobe item:', err);
@@ -203,7 +243,7 @@ function Wardrobe() {
     if (!window.confirm('Are you sure you want to delete this item?')) {
       return;
     }
-    
+
     try {
       const response = await fetch(`/api/wardrobe/${id}`, {
         method: 'DELETE',
@@ -211,14 +251,14 @@ function Wardrobe() {
           'Authorization': `Bearer ${token}`
         }
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to delete item');
       }
-      
+
       // Remove item from state
       setItems(items.filter(item => item.id !== id));
-      
+
     } catch (err) {
       setError('Error deleting item. Please try again.');
       console.error('Error deleting wardrobe item:', err);
@@ -226,8 +266,8 @@ function Wardrobe() {
   };
 
   // Filter items by selected category
-  const filteredItems = selectedCategory === 'All' 
-    ? items 
+  const filteredItems = selectedCategory === 'All'
+    ? items
     : items.filter(item => item.category === selectedCategory);
 
   // Group items by category for carousel
@@ -260,8 +300,8 @@ function Wardrobe() {
         <div className="page-header">
           <h2>My Wardrobe</h2>
           <div className="wardrobe-actions">
-            <button 
-              className="btn btn-primary" 
+            <button
+              className="btn btn-primary"
               onClick={() => setShowAddModal(true)}
             >
               <i className="fas fa-plus"></i> Add Item
@@ -275,14 +315,14 @@ function Wardrobe() {
         <div className="weather-section">
           <WeatherWidget />
         </div>
-        
+
         {error && (
           <div className="error-message">
             <p>{error}</p>
             <button onClick={() => setError(null)} className="btn btn-small">Clear</button>
           </div>
         )}
-        
+
         {items.length === 0 ? (
           <div className="empty-wardrobe">
             <div className="empty-icon">
@@ -290,8 +330,8 @@ function Wardrobe() {
             </div>
             <h3>Your wardrobe is empty</h3>
             <p>Start adding items to organize your clothing collection</p>
-            <button 
-              className="btn btn-primary" 
+            <button
+              className="btn btn-primary"
               onClick={() => setShowAddModal(true)}
             >
               Add Your First Item
@@ -311,7 +351,7 @@ function Wardrobe() {
                 </button>
               ))}
             </div>
-            
+
             {/* Display items */}
             {selectedCategory === 'All' ? (
               // Display all items organized by category (carousel view)
@@ -322,13 +362,25 @@ function Wardrobe() {
                       <h3>{category}</h3>
                       <div className="items-carousel">
                         {groupedItems[category].map(item => (
-                          <div 
-                            key={item.id} 
+                          <div
+                            key={item.id}
                             className={`wardrobe-item ${item.in_laundry ? 'in-laundry' : ''} ${item.unavailable ? 'unavailable' : ''}`}
                           >
                             <div className="item-image">
-                              {item.image ? (
-                                <img src={item.image} alt={item.name || item.description} />
+                              {item.images && item.images.length > 0 ? (
+                                <div className="image-carousel">
+                                  <img src={item.images[0]} alt={item.name || item.fit_description} />
+                                  {item.images.length > 1 && (
+                                    <div className="image-indicators">
+                                      {item.images.map((_, index) => (
+                                        <span
+                                          key={index}
+                                          className="indicator"
+                                        ></span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
                               ) : (
                                 <div className="no-image">
                                   <i className="fas fa-tshirt"></i>
@@ -349,21 +401,21 @@ function Wardrobe() {
                               </div>
                             </div>
                             <div className="item-actions">
-                              <button 
+                              <button
                                 className={`status-toggle ${item.in_laundry ? 'active' : ''}`}
                                 onClick={() => toggleItemStatus(item.id, 'in_laundry')}
                                 title={item.in_laundry ? "Remove from laundry" : "Mark as in laundry"}
                               >
                                 <i className="fas fa-soap"></i>
                               </button>
-                              <button 
+                              <button
                                 className={`status-toggle ${item.unavailable ? 'active' : ''}`}
                                 onClick={() => toggleItemStatus(item.id, 'unavailable')}
                                 title={item.unavailable ? "Mark as available" : "Mark as unavailable"}
                               >
                                 <i className="fas fa-ban"></i>
                               </button>
-                              <button 
+                              <button
                                 className="item-delete"
                                 onClick={() => deleteItem(item.id)}
                                 title="Delete item"
@@ -382,8 +434,8 @@ function Wardrobe() {
               // Display items of selected category (grid view)
               <div className="items-grid">
                 {filteredItems.map(item => (
-                  <div 
-                    key={item.id} 
+                  <div
+                    key={item.id}
                     className={`wardrobe-item ${item.in_laundry ? 'in-laundry' : ''} ${item.unavailable ? 'unavailable' : ''}`}
                   >
                     <div className="item-image">
@@ -409,21 +461,21 @@ function Wardrobe() {
                       </div>
                     </div>
                     <div className="item-actions">
-                      <button 
+                      <button
                         className={`status-toggle ${item.in_laundry ? 'active' : ''}`}
                         onClick={() => toggleItemStatus(item.id, 'in_laundry')}
                         title={item.in_laundry ? "Remove from laundry" : "Mark as in laundry"}
                       >
                         <i className="fas fa-soap"></i>
                       </button>
-                      <button 
+                      <button
                         className={`status-toggle ${item.unavailable ? 'active' : ''}`}
                         onClick={() => toggleItemStatus(item.id, 'unavailable')}
                         title={item.unavailable ? "Mark as available" : "Mark as unavailable"}
                       >
                         <i className="fas fa-ban"></i>
                       </button>
-                      <button 
+                      <button
                         className="item-delete"
                         onClick={() => deleteItem(item.id)}
                         title="Delete item"
@@ -437,7 +489,7 @@ function Wardrobe() {
             )}
           </>
         )}
-        
+
         {/* Add Item Modal */}
         {showAddModal && (
           <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
@@ -446,7 +498,7 @@ function Wardrobe() {
                 <i className="fas fa-times"></i>
               </button>
               <h3>Add Wardrobe Item</h3>
-              
+
               <form onSubmit={handleSubmit} className="add-item-form">
                 <div className="form-group">
                   <label htmlFor="name">Item Name (Optional)</label>
@@ -454,41 +506,58 @@ function Wardrobe() {
                     type="text"
                     id="name"
                     value={itemForm.name}
-                    onChange={(e) => setItemForm({...itemForm, name: e.target.value})}
+                    onChange={(e) => setItemForm({ ...itemForm, name: e.target.value })}
                     placeholder="E.g., Blue Denim Jacket"
                   />
                 </div>
-                
+
                 <div className="form-group">
                   <label htmlFor="description">Description {!itemForm.image && <span className="required">*</span>}</label>
                   <textarea
                     id="description"
                     value={itemForm.description}
-                    onChange={(e) => setItemForm({...itemForm, description: e.target.value})}
+                    onChange={(e) => setItemForm({ ...itemForm, description: e.target.value })}
                     placeholder="Describe your item"
                     rows="3"
                   ></textarea>
                   <p className="form-hint">At least one of Description or Image is required</p>
                 </div>
-                
+
+                {/* Item Images Section */}
                 <div className="form-group">
-                  <label>Item Image {!itemForm.description && <span className="required">*</span>}</label>
+                  <label>Item Images <span className="required">*</span> (1-5 images)</label>
                   <div className="image-upload-container">
-                    {itemForm.imagePreview ? (
-                      <div className="image-preview-container">
-                        <img src={itemForm.imagePreview} alt="Preview" className="image-preview" />
-                        <button 
-                          type="button" 
-                          className="btn btn-small btn-remove" 
-                          onClick={() => setItemForm({...itemForm, image: null, imagePreview: null})}
-                        >
-                          Remove
-                        </button>
+                    {itemForm.imagePreview && itemForm.imagePreview.length > 0 ? (
+                      <div className="image-previews">
+                        {itemForm.imagePreview.map((preview, index) => (
+                          <div key={index} className="image-preview-item">
+                            <img src={preview} alt={`Preview ${index + 1}`} className="image-preview" />
+                            <button
+                              type="button"
+                              className="btn btn-small btn-remove"
+                              onClick={() => handleRemoveImage(index)}
+                            >
+                              <i className="fas fa-times"></i>
+                            </button>
+                          </div>
+                        ))}
+                        {itemForm.imagePreview.length < 5 && (
+                          <label className="image-upload-additional">
+                            <i className="fas fa-plus"></i>
+                            <span>Add Image</span>
+                            <input
+                              type="file"
+                              accept="image/jpeg,image/png,image/jpg"
+                              onChange={handleImageChange}
+                              hidden
+                            />
+                          </label>
+                        )}
                       </div>
                     ) : (
                       <label className="image-upload">
                         <i className="fas fa-upload"></i>
-                        <span>Choose Image</span>
+                        <span>Choose Images</span>
                         <input
                           type="file"
                           accept="image/jpeg,image/png,image/jpg"
@@ -498,14 +567,27 @@ function Wardrobe() {
                       </label>
                     )}
                   </div>
+                  <p className="form-hint">Upload 1-5 images of your garment</p>
                 </div>
-                
+
+                {/* Fit Description */}
+                <div className="form-group">
+                  <label htmlFor="fit_description">Fit Description (Optional)</label>
+                  <textarea
+                    id="fit_description"
+                    value={itemForm.fit_description}
+                    onChange={(e) => setItemForm({ ...itemForm, fit_description: e.target.value })}
+                    placeholder="Describe how this item fits on your body"
+                    rows="3"
+                  ></textarea>
+                </div>
+
                 <div className="form-group">
                   <label htmlFor="tag">Category <span className="required">*</span></label>
                   <select
                     id="tag"
                     value={itemForm.tag}
-                    onChange={(e) => setItemForm({...itemForm, tag: e.target.value})}
+                    onChange={(e) => setItemForm({ ...itemForm, tag: e.target.value })}
                     required
                   >
                     <option value="">Select a category</option>
@@ -516,27 +598,27 @@ function Wardrobe() {
                     ))}
                   </select>
                 </div>
-                
+
                 <div className="form-group checkbox-group">
                   <label className="checkbox-label">
                     <input
                       type="checkbox"
                       checked={itemForm.in_laundry}
-                      onChange={(e) => setItemForm({...itemForm, in_laundry: e.target.checked})}
+                      onChange={(e) => setItemForm({ ...itemForm, in_laundry: e.target.checked })}
                     />
                     In Laundry
                   </label>
-                  
+
                   <label className="checkbox-label">
                     <input
                       type="checkbox"
                       checked={itemForm.unavailable}
-                      onChange={(e) => setItemForm({...itemForm, unavailable: e.target.checked})}
+                      onChange={(e) => setItemForm({ ...itemForm, unavailable: e.target.checked })}
                     />
                     Unavailable
                   </label>
                 </div>
-                
+
                 <div className="form-actions">
                   <button type="button" className="btn btn-secondary" onClick={() => setShowAddModal(false)}>
                     Cancel

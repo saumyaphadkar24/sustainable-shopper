@@ -9,6 +9,8 @@ import base64
 from bson.objectid import ObjectId
 from flask_bcrypt import Bcrypt
 import datetime
+import tempfile
+import openai
 
 # Import database and authentication modules
 from db import test_connection, users, try_on_history, user_photos, wardrobe_items, get_all_tags, get_category_for_tag
@@ -27,6 +29,7 @@ API_KEY = os.environ.get('FASHN_AI_API_KEY', '')  # Get API key from environment
 MAX_POLLING_TIME = 120  # Maximum polling time in seconds
 POLLING_INTERVAL = 2  # Time between status checks in seconds
 WEATHER_API_KEY = os.environ.get('WEATHER_API_KEY', '')  # API key for weather service
+openai.api_key = os.environ.get('OPENAI_API_KEY', '')
 print(f'Weather api key loaded correctly: {WEATHER_API_KEY}')
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max upload size
@@ -492,6 +495,61 @@ def get_history(current_user):
     return jsonify(formatted_history), 200
 
 # Wardrobe endpoints
+
+def describe_garment(image_data_list):
+    """
+    Given a list of image data strings (base64), sends them to the OpenAI API
+    and returns a textual description of the garment/clothing item.
+    """
+    if not (1 <= len(image_data_list) <= 5):
+        raise ValueError("You must provide between 1 and 5 images.")
+    
+    # Create temporary files for the images
+    temp_image_paths = []
+    try:
+        for img_data in image_data_list:
+            # Remove the data URI prefix if present
+            if ',' in img_data:
+                img_data = img_data.split(',', 1)[1]
+            
+            # Create a temporary file
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as temp_file:
+                temp_file.write(base64.b64decode(img_data))
+                temp_image_paths.append(temp_file.name)
+        
+        # Prepare the multimodal content payload
+        content = []
+        for img_path in temp_image_paths:
+            with open(img_path, "rb") as f:
+                img_bytes = f.read()
+            img_b64 = base64.b64encode(img_bytes).decode("utf-8")
+            content.append(
+                {"type": "input_image", 
+                "image_url": f"data:image/png;base64,{img_b64}"}
+            )
+        
+        # Append the user instruction
+        content.append({
+            "type": "input_text",
+            "text": "Please provide a detailed textual description of the garment or clothing item shown in these images."
+        })
+        
+        # Call the ChatGPT API with GPT-4.1 Mini
+        response = openai.responses.create(
+            model="gpt-4.1-mini",
+            input=[{"role": "user", "content": content}]
+        )
+        return response.output_text
+    
+    finally:
+        # Clean up temporary files
+        for path in temp_image_paths:
+            try:
+                os.unlink(path)
+            except Exception as e:
+                print(f"Error removing temporary file: {e}")
+
+
 @app.route('/api/wardrobe', methods=['GET'])
 @token_required
 def get_wardrobe(current_user):
@@ -501,18 +559,25 @@ def get_wardrobe(current_user):
     # Format for JSON response
     formatted_items = []
     for item in items:
-        formatted_items.append({
+        formatted_item = {
             'id': str(item['_id']),
             'name': item.get('name', ''),
-            'description': item.get('description', ''),
-            'image': item.get('image', ''),
+            'fit_description': item.get('fit_description', ''),
             'category': item['category'],
             'tag': item['tag'],
             'color': item.get('color', ''),
             'in_laundry': item.get('in_laundry', False),
             'unavailable': item.get('unavailable', False),
             'created_at': item['created_at']
-        })
+        }
+        
+        # Ensure images are properly included
+        if 'images' in item and isinstance(item['images'], list):
+            formatted_item['images'] = item['images']
+        else:
+            formatted_item['images'] = []
+        
+        formatted_items.append(formatted_item)
     
     return jsonify(formatted_items), 200
 
@@ -525,36 +590,41 @@ def get_wardrobe_tags():
 @token_required
 def add_wardrobe_item(current_user):
     data = {}
-    image_data = None
+    image_data_list = []
     
     # Check if this is a multipart form or JSON
     if request.content_type and 'multipart/form-data' in request.content_type:
-        # Handle multipart form data (with file)
+        # Handle multipart form data (with files)
         data = {
             'name': request.form.get('name', ''),
-            'description': request.form.get('description', ''),
+            'fit_description': request.form.get('fit_description', ''),
             'tag': request.form.get('tag', ''),
             'in_laundry': request.form.get('in_laundry', 'false').lower() == 'true',
             'unavailable': request.form.get('unavailable', 'false').lower() == 'true',
         }
         
-        if 'image' in request.files:
-            image_file = request.files['image']
-            if image_file.filename != '':
-                if allowed_file(image_file.filename):
-                    # Save file temporarily
-                    filename = secure_filename(image_file.filename)
-                    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                    image_file.save(filepath)
-                    
-                    # Convert to base64
-                    with open(filepath, "rb") as f:
-                        image_data = base64.b64encode(f.read()).decode('utf-8')
-                    
-                    # Clean up temporary file
-                    os.remove(filepath)
-                else:
-                    return jsonify({'error': 'Only image files (png, jpg, jpeg) are allowed'}), 400
+        # Handle multiple image files
+        if 'images[]' in request.files:
+            image_files = request.files.getlist('images[]')
+            for image_file in image_files:
+                if image_file.filename != '':
+                    if allowed_file(image_file.filename):
+                        # Save file temporarily
+                        filename = secure_filename(image_file.filename)
+                        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                        image_file.save(filepath)
+                        
+                        # Convert to base64
+                        with open(filepath, "rb") as f:
+                            img_data = base64.b64encode(f.read()).decode('utf-8')
+                        
+                        # Add to image data list
+                        image_data_list.append(f"data:image/jpeg;base64,{img_data}")
+                        
+                        # Clean up temporary file
+                        os.remove(filepath)
+                    else:
+                        return jsonify({'error': 'Only image files (png, jpg, jpeg) are allowed'}), 400
     else:
         # Handle JSON data
         data = request.get_json()
@@ -562,27 +632,38 @@ def add_wardrobe_item(current_user):
             return jsonify({'error': 'No data provided'}), 400
         
         # If there's base64 image data in the JSON
-        if 'image_data' in data:
-            image_data = data['image_data'].split(',')[-1]  # Remove data:image/jpeg;base64, prefix if present
+        if 'images' in data and isinstance(data['images'], list):
+            image_data_list = data['images']
     
     # Validate required fields
     if not data.get('tag'):
         return jsonify({'error': 'Clothing tag is required'}), 400
     
-    if not data.get('description') and not image_data:
-        return jsonify({'error': 'At least one of description or image is required'}), 400
+    if not image_data_list:
+        return jsonify({'error': 'At least one image is required'}), 400
+    
+    if len(image_data_list) > 5:
+        return jsonify({'error': 'Maximum 5 images allowed'}), 400
     
     # Get category based on tag
     category = get_category_for_tag(data['tag'])
     if not category:
         return jsonify({'error': 'Invalid clothing tag'}), 400
     
+    # Generate AI description of the garment
+    try:
+        ai_description = describe_garment([img.split(',')[1] if ',' in img else img for img in image_data_list])
+    except Exception as e:
+        print(f"Error generating AI description: {e}")
+        ai_description = "Description could not be generated."
+    
     # Create wardrobe item
     item = {
         'user_id': str(current_user['_id']),
         'name': data.get('name', ''),
-        'description': data.get('description', ''),
-        'image': f"data:image/jpeg;base64,{image_data}" if image_data else '',
+        'fit_description': data.get('fit_description', ''),
+        'images': image_data_list,
+        'ai_description': ai_description,
         'category': category,
         'tag': data['tag'],
         'color': data.get('color', ''),
@@ -597,8 +678,8 @@ def add_wardrobe_item(current_user):
     return jsonify({
         'id': str(result.inserted_id),
         'name': item['name'],
-        'description': item['description'],
-        'image': item['image'],
+        'fit_description': item['fit_description'],
+        'images': item['images'],
         'category': item['category'],
         'tag': item['tag'],
         'color': item['color'],
@@ -620,36 +701,45 @@ def update_wardrobe_item(current_user, item_id):
         return jsonify({'error': 'Item not found'}), 404
     
     data = {}
-    image_data = None
+    image_data_list = []
     
     # Check if this is a multipart form or JSON
     if request.content_type and 'multipart/form-data' in request.content_type:
         # Handle multipart form data (with file)
         data = {
             'name': request.form.get('name', item.get('name', '')),
-            'description': request.form.get('description', item.get('description', '')),
+            'fit_description': request.form.get('fit_description', item.get('fit_description', '')),
             'tag': request.form.get('tag', item['tag']),
             'in_laundry': request.form.get('in_laundry', str(item.get('in_laundry', False))).lower() == 'true',
             'unavailable': request.form.get('unavailable', str(item.get('unavailable', False))).lower() == 'true',
         }
         
-        if 'image' in request.files:
-            image_file = request.files['image']
-            if image_file.filename != '':
-                if allowed_file(image_file.filename):
-                    # Save file temporarily
-                    filename = secure_filename(image_file.filename)
-                    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                    image_file.save(filepath)
-                    
-                    # Convert to base64
-                    with open(filepath, "rb") as f:
-                        image_data = base64.b64encode(f.read()).decode('utf-8')
-                    
-                    # Clean up temporary file
-                    os.remove(filepath)
-                else:
-                    return jsonify({'error': 'Only image files (png, jpg, jpeg) are allowed'}), 400
+        # Handle multiple image files
+        if 'images[]' in request.files:
+            image_files = request.files.getlist('images[]')
+            for image_file in image_files:
+                if image_file.filename != '':
+                    if allowed_file(image_file.filename):
+                        # Save file temporarily
+                        filename = secure_filename(image_file.filename)
+                        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                        image_file.save(filepath)
+                        
+                        # Convert to base64
+                        with open(filepath, "rb") as f:
+                            img_data = base64.b64encode(f.read()).decode('utf-8')
+                        
+                        # Add to image data list
+                        image_data_list.append(f"data:image/jpeg;base64,{img_data}")
+                        
+                        # Clean up temporary file
+                        os.remove(filepath)
+                    else:
+                        return jsonify({'error': 'Only image files (png, jpg, jpeg) are allowed'}), 400
+        
+        # If no new images were uploaded, keep the existing ones
+        if not image_data_list and 'images' in item:
+            image_data_list = item['images']
     else:
         # Handle JSON data
         data = request.get_json()
@@ -657,25 +747,44 @@ def update_wardrobe_item(current_user, item_id):
             return jsonify({'error': 'No data provided'}), 400
         
         # If there's base64 image data in the JSON
-        if 'image_data' in data:
-            image_data = data['image_data'].split(',')[-1]  # Remove data:image/jpeg;base64, prefix if present
+        if 'images' in data and isinstance(data['images'], list):
+            image_data_list = data['images']
+        elif 'images' in item:
+            image_data_list = item['images']
     
     # Validate required fields
     if not data.get('tag'):
         return jsonify({'error': 'Clothing tag is required'}), 400
     
-    if not data.get('description') and not image_data and not item.get('description') and not item.get('image'):
-        return jsonify({'error': 'At least one of description or image is required'}), 400
+    if not image_data_list:
+        return jsonify({'error': 'At least one image is required'}), 400
+    
+    if len(image_data_list) > 5:
+        return jsonify({'error': 'Maximum 5 images allowed'}), 400
     
     # Get category based on tag
     category = get_category_for_tag(data['tag'])
     if not category:
         return jsonify({'error': 'Invalid clothing tag'}), 400
     
+    # Generate AI description of the garment if images have changed
+    images_changed = ('images' not in item) or (set(image_data_list) != set(item['images']))
+    
+    ai_description = item.get('ai_description', '')
+    if images_changed:
+        try:
+            ai_description = describe_garment([img.split(',')[1] if ',' in img else img for img in image_data_list])
+        except Exception as e:
+            print(f"Error generating AI description: {e}")
+            if not ai_description:
+                ai_description = "Description could not be generated."
+    
     # Update the item
     update_data = {
         'name': data.get('name', item.get('name', '')),
-        'description': data.get('description', item.get('description', '')),
+        'fit_description': data.get('fit_description', item.get('fit_description', '')),
+        'images': image_data_list,
+        'ai_description': ai_description,
         'category': category,
         'tag': data['tag'],
         'color': data.get('color', item.get('color', '')),
@@ -683,10 +792,6 @@ def update_wardrobe_item(current_user, item_id):
         'unavailable': data.get('unavailable', item.get('unavailable', False)),
         'updated_at': time.time()
     }
-    
-    # Only update image if a new one was provided
-    if image_data:
-        update_data['image'] = f"data:image/jpeg;base64,{image_data}"
     
     # Update in database
     wardrobe_items.update_one(
@@ -700,8 +805,8 @@ def update_wardrobe_item(current_user, item_id):
     return jsonify({
         'id': str(updated_item['_id']),
         'name': updated_item.get('name', ''),
-        'description': updated_item.get('description', ''),
-        'image': updated_item.get('image', ''),
+        'fit_description': updated_item.get('fit_description', ''),
+        'images': updated_item.get('images', []),
         'category': updated_item['category'],
         'tag': updated_item['tag'],
         'color': updated_item.get('color', ''),

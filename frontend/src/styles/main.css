@@ -767,6 +767,13 @@ main {
   scrollbar-width: thin;
 }
 
+.items-carousel .wardrobe-item {
+  min-width: 220px; /* Fixed minimum width */
+  max-width: 220px; /* Fixed maximum width */
+  height: 300px;    /* Fixed height */
+  margin-right: 20px;
+}
+
 .items-carousel::-webkit-scrollbar {
   height: 8px;
 }
@@ -794,6 +801,10 @@ main {
   box-shadow: var(--shadow);
   transition: transform 0.2s;
   position: relative;
+  width: 100%;  /* Make sure width is 100% of grid cell */
+  height: 300px; /* Fixed height for all items */
+  display: flex;
+  flex-direction: column;
 }
 
 .wardrobe-item:hover {
@@ -811,12 +822,14 @@ main {
 .item-image {
   height: 200px;
   position: relative;
+  width: 100%;
+  overflow: hidden; /* Hide overflow */
 }
 
 .item-image img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: cover; /* This is key - ensures images cover the area while maintaining aspect ratio */
 }
 
 .no-image {
@@ -1225,4 +1238,80 @@ main {
   .footer-content {
     flex-direction: column;
   }
+}
+
+.image-previews {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  width: 100%;
+}
+
+.image-preview-item {
+  position: relative;
+  width: calc(33.33% - 10px);
+  height: 120px;
+}
+
+.image-preview-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.image-preview-item .btn-remove {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background-color: rgba(231, 76, 60, 0.8);
+  color: white;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.image-upload-additional {
+  width: calc(33.33% - 10px);
+  height: 120px;
+  background-color: var(--gray-light);
+  border: 2px dashed var(--gray);
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.image-carousel {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.image-indicators {
+  position: absolute;
+  bottom: 10px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+}
+
+.indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+}
+
+.indicator.active {
+  background-color: var(--white);
 }
