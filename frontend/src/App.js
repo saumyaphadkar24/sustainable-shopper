@@ -4,6 +4,7 @@ import './styles/main.css';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import TryOnPage from './components/TryOnPage';
+import AlternativesPage from './components/AlternativesPage';
 import LandingPage from './components/LandingPage';
 import AuthPage from './components/AuthPage';
 import HistoryPage from './components/HistoryPage'; 
@@ -70,6 +71,15 @@ function AppContent() {
             element={
               <ProtectedRoute>
                 <TryOnPage />
+              </ProtectedRoute>
+            } 
+          />
+
+          <Route 
+            path="/alternatives" 
+            element={
+              <ProtectedRoute>
+                <AlternativesPage />
               </ProtectedRoute>
             } 
           />

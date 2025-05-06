@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from './AuthContext';
 import WeatherWidget from './WeatherWidget';
 import OutfitSuggestionModal from './OutfitSuggestionModal';
@@ -19,6 +19,8 @@ function Wardrobe() {
   const [successMessage, setSuccessMessage] = useState(null);
   const { token } = useAuth();
 
+  const carouselRefs = useRef({});
+
   // Form state for adding/editing items
   const [itemForm, setItemForm] = useState({
     name: '',
@@ -37,11 +39,13 @@ function Wardrobe() {
   useEffect(() => {
     fetchWardrobeItems();
     fetchTags();
+    // eslint-disable-next-line
   }, [token]);
 
   useEffect(() => {
     fetchWardrobeItems();
     fetchTags();
+    // eslint-disable-next-line
   }, [token]);
 
   const fetchWardrobeItems = async () => {
@@ -420,15 +424,41 @@ function Wardrobe() {
               ))}
             </div>
 
-            {/* Display items */}
+            {/* Display items */} {/*I AM HERE*/}
             {selectedCategory === 'All' ? (
               // Display all items organized by category (carousel view)
               <div className="category-carousels">
                 {Object.keys(groupedItems).map(category => (
                   groupedItems[category].length > 0 && (
                     <div key={category} className="category-section">
-                      <h3>{category}</h3>
-                      <div className="items-carousel">
+                      <div className="carousel-header">
+                        <h3>{category}</h3>
+                        <div className="carousel-scroll-controls">
+                          <button
+                            className="carousel-scroll-button"
+                            onClick={() => {
+                              const container = carouselRefs.current[category];
+                              if (container) container.scrollLeft -= container.offsetWidth;
+                            }}
+                          >
+                            &lt;
+                          </button>
+                          <button
+                            className="carousel-scroll-button"
+                            onClick={() => {
+                              const container = carouselRefs.current[category];
+                              if (container) container.scrollLeft += container.offsetWidth;
+                            }}
+                          >
+                            &gt;
+                          </button>
+                        </div>
+                      </div>
+
+                      <div
+                        className="items-carousel"
+                        ref={el => (carouselRefs.current[category] = el)}
+                      >
                         {groupedItems[category].map(item => (
                           <div
                             key={item.id}
@@ -498,6 +528,7 @@ function Wardrobe() {
                   )
                 ))}
               </div>
+
             ) : (
               // Display items of selected category (grid view)
               <div className="items-grid">
@@ -507,20 +538,8 @@ function Wardrobe() {
                     className={`wardrobe-item ${item.in_laundry ? 'in-laundry' : ''} ${item.unavailable ? 'unavailable' : ''}`}
                   >
                     <div className="item-image">
-                      {item.images && item.images.length > 0 ? (
-                        <div className="image-carousel">
-                          <img src={item.images[0]} alt={item.name || item.fit_description} />
-                          {item.images.length > 1 && (
-                            <div className="image-indicators">
-                              {item.images.map((_, index) => (
-                                <span
-                                  key={index}
-                                  className="indicator"
-                                ></span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
+                    {item.images && item.images.length > 0 ? (
+                      <img src={item.images[0]} alt={item.name || item.description} />
                       ) : (
                         <div className="no-image">
                           <i className="fas fa-tshirt"></i>

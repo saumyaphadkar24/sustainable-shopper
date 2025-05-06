@@ -11,6 +11,8 @@ from flask_bcrypt import Bcrypt
 import datetime
 import tempfile
 import openai
+from clip_index.search_clip import search_similar_products_clip
+
 
 # Import database and authentication modules
 from db import test_connection, users, try_on_history, user_photos, wardrobe_items, get_all_tags, get_category_for_tag
@@ -30,6 +32,7 @@ MAX_POLLING_TIME = 120  # Maximum polling time in seconds
 POLLING_INTERVAL = 2  # Time between status checks in seconds
 WEATHER_API_KEY = os.environ.get('WEATHER_API_KEY', '')  # API key for weather service
 openai.api_key = os.environ.get('OPENAI_API_KEY', '')
+print(f'Weather api key loaded correctly: {WEATHER_API_KEY}')
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max upload size
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-for-development-only')
@@ -334,42 +337,41 @@ def delete_user_photo(current_user, photo_id):
 @app.route('/api/try-on-with-saved', methods=['POST'])
 @token_required
 def try_on_with_saved(current_user):
-    data = request.get_json()
-    
-    if not data or not data.get('photo_id') or 'garment_image' not in request.files:
+    photo_id = request.form.get('photo_id')  # fix: use form, not json
+
+    if not photo_id or 'garment_image' not in request.files:
         return jsonify({'error': 'Both photo ID and garment image are required'}), 400
-    
+
     # Find the user's photo
     photo = user_photos.find_one({
-        '_id': ObjectId(data['photo_id']), 
+        '_id': ObjectId(photo_id),
         'user_id': str(current_user['_id'])
     })
-    
+
     if not photo:
         return jsonify({'error': 'Photo not found'}), 404
-    
+
     garment_image = request.files['garment_image']
-    
+
     # Validate garment file
     if garment_image.filename == '':
         return jsonify({'error': 'Garment file must have a filename'}), 400
-    
+
     if not allowed_file(garment_image.filename):
         return jsonify({'error': 'Only image files (png, jpg, jpeg) are allowed'}), 400
-    
+
     # Save garment file temporarily
     garment_filename = secure_filename(garment_image.filename)
     garment_path = os.path.join(app.config['UPLOAD_FOLDER'], garment_filename)
     garment_image.save(garment_path)
-    
+
     # Convert to base64
     with open(garment_path, "rb") as f:
         garment_data = base64.b64encode(f.read()).decode('utf-8')
-    
+
     # Clean up temporary file
     os.remove(garment_path)
-    
-    # Get the model image from the saved photo
+
     model_image_base64 = photo['image']
     garment_image_base64 = f"data:image/jpeg;base64,{garment_data}"
     
@@ -878,6 +880,30 @@ def toggle_wardrobe_item_status(current_user, item_id):
         'updated_at': updated_item.get('updated_at', '')
     }), 200
 
+# Alternatives API
+@app.route('/api/alternatives', methods=['POST'])
+def get_alternatives():
+    if 'query_image' not in request.files:
+        return jsonify({'error': 'Image file is required'}), 400
+
+    image = request.files['query_image']
+    
+    if image.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
+
+    filename = secure_filename(image.filename)
+    temp_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    image.save(temp_path)
+
+    try:
+        results = search_similar_products_clip(temp_path, top_k=5)
+        os.remove(temp_path)
+        return jsonify(results)
+    except Exception as e:
+        os.remove(temp_path)
+        return jsonify({'error': str(e)}), 500
+
+
 # Weather API
 @app.route('/api/weather', methods=['GET'])
 @token_required
@@ -895,6 +921,7 @@ def get_weather(current_user):
             f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={WEATHER_API_KEY}&units=metric",
             timeout=10
         )
+        # print(response.status_code)
         if response.status_code != 200:
             return jsonify({
                 'error': f'Weather API request failed with status code {response.status_code}',
@@ -906,6 +933,46 @@ def get_weather(current_user):
         
     except Exception as e:
         return jsonify({'error': f'Weather API request failed: {str(e)}'}), 500
+
+@app.route('/api/suggest-outfit', methods=['POST'])
+@token_required
+def suggest_outfit(current_user):
+    data = request.json
+    weather = data.get("weather")
+    image_base64 = data.get("image_base64")  # optional
+
+    messages = [
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": f"""Based on the weather trends {weather} today, suggest elements for the outfit in terms of type, material, and layering."""
+                }
+            ]
+        }
+    ]
+
+    if image_base64:
+        messages[0]["content"].append({
+            "type": "image_url",
+            "image_url": {
+                "url": f"data:image/jpeg;base64,{image_base64}",
+                "detail": "high"
+            }
+        })
+
+    from openai import OpenAI
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=messages,
+        max_tokens=300
+    )
+
+    return jsonify({"recommendation": response.choices[0].message.content})
+
 
 @app.route('/api/outfit-suggestions', methods=['POST'])
 @token_required
@@ -1039,5 +1106,5 @@ def serve(path):
     return send_from_directory(app.static_folder, 'index.html')
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
+    port = int(os.environ.get('PORT', 5001))
     app.run(host='0.0.0.0', port=port, debug=True)

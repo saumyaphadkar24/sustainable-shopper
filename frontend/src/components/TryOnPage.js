@@ -36,6 +36,7 @@ function TryOnPage() {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
+          // DO NOT set 'Content-Type' here!
         },
         body: formData,
       });

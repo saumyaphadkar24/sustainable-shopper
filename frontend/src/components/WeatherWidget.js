@@ -7,8 +7,6 @@ function WeatherWidget({ onWeatherUpdate = () => {} }) {
   const [error, setError] = useState(null);
   const [location, setLocation] = useState(null);
   const { token } = useAuth();
-  // const { onWeatherUpdate = () => {} } = props;
-  // const updateWeather = onWeatherUpdate || (() => {});
 
   useEffect(() => {
     // Get user's location
@@ -36,6 +34,7 @@ function WeatherWidget({ onWeatherUpdate = () => {} }) {
     if (location && token) {
       fetchWeather();
     }
+    // eslint-disable-next-line
   }, [location, token]);
 
   const fetchWeather = async () => {
@@ -56,8 +55,7 @@ function WeatherWidget({ onWeatherUpdate = () => {} }) {
       const data = await response.json();
       setWeather(data);
       if (onWeatherUpdate) onWeatherUpdate(data);
-      // onWeatherUpdate(data); // Pass the weather data to the parent component
-      // updateWeather(data); 
+      getOutfitRecommendation(data);
       setError(null);
     } catch (err) {
       setError('Error loading weather information.');
@@ -67,46 +65,52 @@ function WeatherWidget({ onWeatherUpdate = () => {} }) {
     }
   };
 
+  const [outfitSuggestion, setOutfitSuggestion] = useState('');
+
+  const [expanded, setExpanded] = useState(false);
+
   // Helper function to get weather icon
   const getWeatherIcon = (iconCode) => {
     return `https://openweathermap.org/img/wn/${iconCode}@2x.png`;
   };
 
-  // Get clothing recommendation based on temperature
-  const getClothingRecommendation = (temp) => {
-    if (temp > 30) {
-      return "Very hot weather! Light, breathable clothing like shorts, t-shirts, and sunhats recommended.";
-    } else if (temp > 25) {
-      return "Hot weather! Lightweight clothing like shorts, t-shirts, and summer dresses recommended.";
-    } else if (temp > 20) {
-      return "Warm weather! Light clothing like short sleeves and light pants or skirts recommended.";
-    } else if (temp > 15) {
-      return "Mild weather! Medium-weight clothing like long sleeves and light jackets recommended.";
-    } else if (temp > 10) {
-      return "Cool weather! Layered clothing with light jackets or sweaters recommended.";
-    } else if (temp > 5) {
-      return "Chilly weather! Warm clothing like jackets, sweaters, and long pants recommended.";
-    } else if (temp > 0) {
-      return "Cold weather! Warm clothing like winter jackets, sweaters, scarves, and hats recommended.";
-    } else {
-      return "Very cold weather! Heavy winter clothing like thick coats, gloves, hats, and scarves recommended.";
+  const getOutfitRecommendation = async (weatherData) => {
+    try {
+      const response = await fetch('/api/suggest-outfit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          weather: weatherData,
+          wardrobe: []
+        })
+      });
+      console.log("Weather:", weather)
+  
+      const data = await response.json();
+      setOutfitSuggestion(data.recommendation);
+    } catch (err) {
+      console.error('Failed to fetch GPT outfit suggestion:', err);
+      setOutfitSuggestion('Could not load smart outfit suggestion.');
     }
   };
-
-  if (loading) {
-    return (
-      <div className="weather-widget loading">
-        <div className="loader-small"></div>
-        <p>Loading weather information...</p>
-      </div>
-    );
-  }
 
   if (error) {
     return (
       <div className="weather-widget error">
         <i className="fas fa-cloud-rain"></i>
         <p>{error}</p>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="weather-widget loading">
+        <div className="loader-small"></div>
+        <p>Loading weather & recommendations...</p>
       </div>
     );
   }
@@ -119,6 +123,14 @@ function WeatherWidget({ onWeatherUpdate = () => {} }) {
       </div>
     );
   }
+
+  const formatSuggestionAsHTML = (text) => {
+    if (!text) return "";
+    return text
+      .replace(/###/g, "<br/>")
+      .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+      .replace(/(?:\r\n|\r|\n)/g, "<br/>");
+  };
 
   return (
     <div className="weather-widget">
@@ -151,7 +163,17 @@ function WeatherWidget({ onWeatherUpdate = () => {} }) {
       </div>
       <div className="weather-recommendation">
         <h4>Today's Outfit Recommendation</h4>
-        <p>{getClothingRecommendation(weather.main.temp)}</p>
+        <div className="outfit-text-container">
+          <div
+            className={`outfit-text ${expanded ? 'expanded' : 'collapsed'}`}
+            dangerouslySetInnerHTML={{ __html: formatSuggestionAsHTML(outfitSuggestion) }}
+          ></div>
+          {outfitSuggestion.length > 300 && (
+            <button className="read-more-btn" onClick={() => setExpanded(!expanded)}>
+              {expanded ? "Read less" : "Read more"}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

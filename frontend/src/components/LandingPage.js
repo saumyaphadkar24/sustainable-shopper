@@ -48,12 +48,6 @@ function LandingPage() {
               )}
             </div>
           </div>
-          
-          {/* 
-            <div className="hero-image">
-              <img src="/assets/hero-image.svg" alt="Virtual try-on illustration" />
-            </div> 
-          */}
         </div>
       </div>
       
