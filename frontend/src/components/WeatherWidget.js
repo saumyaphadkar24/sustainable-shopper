@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 
-function WeatherWidget() {
+function WeatherWidget({ onWeatherUpdate = () => {} }) {
   const [weather, setWeather] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [location, setLocation] = useState(null);
   const { token } = useAuth();
+  // const { onWeatherUpdate = () => {} } = props;
+  // const updateWeather = onWeatherUpdate || (() => {});
 
   useEffect(() => {
     // Get user's location
@@ -53,6 +55,9 @@ function WeatherWidget() {
 
       const data = await response.json();
       setWeather(data);
+      if (onWeatherUpdate) onWeatherUpdate(data);
+      // onWeatherUpdate(data); // Pass the weather data to the parent component
+      // updateWeather(data); 
       setError(null);
     } catch (err) {
       setError('Error loading weather information.');

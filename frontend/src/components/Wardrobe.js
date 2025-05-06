@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import WeatherWidget from './WeatherWidget';
+import OutfitSuggestionModal from './OutfitSuggestionModal';
+import EditItemModal from './EditItemModal';
 
 function Wardrobe() {
   const [items, setItems] = useState([]);
@@ -10,6 +12,11 @@ function Wardrobe() {
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showOutfitModal, setShowOutfitModal] = useState(false);
+  const [weatherData, setWeatherData] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
   const { token } = useAuth();
 
   // Form state for adding/editing items
@@ -23,6 +30,10 @@ function Wardrobe() {
     imagePreview: []
   });
 
+  const handleWeatherUpdate = (data) => {
+    setWeatherData(data);
+  };
+
   useEffect(() => {
     fetchWardrobeItems();
     fetchTags();
@@ -32,7 +43,7 @@ function Wardrobe() {
     fetchWardrobeItems();
     fetchTags();
   }, [token]);
-  
+
   const fetchWardrobeItems = async () => {
     try {
       setLoading(true);
@@ -41,27 +52,27 @@ function Wardrobe() {
           'Authorization': `Bearer ${token}`
         }
       });
-  
+
       if (!response.ok) {
         throw new Error('Failed to fetch wardrobe items');
       }
-  
+
       const data = await response.json();
       console.log("Fetched wardrobe items:", data); // Add this to debug
-      
+
       // Check if images are properly present
       data.forEach(item => {
         if (!item.images || !Array.isArray(item.images) || item.images.length === 0) {
           console.warn(`Item ${item.id} has no images or invalid image data`);
         }
       });
-      
+
       setItems(data);
-      
+
       // Extract unique categories
       const uniqueCategories = [...new Set(data.map(item => item.category))];
       setCategories(['All', ...uniqueCategories]);
-      
+
       setError(null);
     } catch (err) {
       setError('Error loading your wardrobe. Please try again.');
@@ -265,6 +276,61 @@ function Wardrobe() {
     }
   };
 
+  const handleItemClick = (item) => {
+    setSelectedItem(item);
+    setShowEditModal(true);
+  };
+
+  const handleItemUpdate = (updatedItem) => {
+    // Update the items list with the updated item
+    setItems(items.map(item =>
+      item.id === updatedItem.id ? updatedItem : item
+    ));
+
+    // Show success message (optional)
+    setSuccessMessage('Item updated successfully!');
+    setTimeout(() => setSuccessMessage(null), 3000);
+  };
+
+  const renderWardrobeItem = (item) => {
+    return (
+      <div
+        key={item.id}
+        className={`wardrobe-item ${item.in_laundry ? 'in-laundry' : ''} ${item.unavailable ? 'unavailable' : ''}`}
+        onClick={() => handleItemClick(item)} // Add click handler
+      >
+        <div className="item-image">
+          {item.images && Array.isArray(item.images) && item.images.length > 0 ? (
+            <img
+              src={item.images[0]}
+              alt={item.name || "Wardrobe item"}
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100%" height="100%" fill="%23f0f0f0"/><text x="50%" y="50%" font-family="Arial" font-size="14" text-anchor="middle" dominant-baseline="middle" fill="%23999">No image</text></svg>';
+              }}
+            />
+          ) : (
+            <div className="no-image">
+              <i className="fas fa-tshirt"></i>
+            </div>
+          )}
+          {(item.in_laundry || item.unavailable) && (
+            <div className="item-status">
+              {item.in_laundry && <span className="status-badge laundry">Laundry</span>}
+              {item.unavailable && <span className="status-badge unavailable">Unavailable</span>}
+            </div>
+          )}
+        </div>
+        <div className="item-details">
+          <h3 className="item-name">{item.name || item.category}</h3>
+          {item.fit_description && (
+            <p className="item-description">{item.fit_description}</p>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   // Filter items by selected category
   const filteredItems = selectedCategory === 'All'
     ? items
@@ -306,14 +372,16 @@ function Wardrobe() {
             >
               <i className="fas fa-plus"></i> Add Item
             </button>
-            <button className="btn btn-secondary outfit-suggestion-btn">
+            <button
+              className="btn btn-secondary outfit-suggestion-btn"
+              onClick={() => setShowOutfitModal(true)}>
               <i className="fas fa-magic"></i> Outfit Suggestions
             </button>
           </div>
         </div>
 
         <div className="weather-section">
-          <WeatherWidget />
+          <WeatherWidget onWeatherUpdate={handleWeatherUpdate} />
         </div>
 
         {error && (
@@ -439,8 +507,20 @@ function Wardrobe() {
                     className={`wardrobe-item ${item.in_laundry ? 'in-laundry' : ''} ${item.unavailable ? 'unavailable' : ''}`}
                   >
                     <div className="item-image">
-                      {item.image ? (
-                        <img src={item.image} alt={item.name || item.description} />
+                      {item.images && item.images.length > 0 ? (
+                        <div className="image-carousel">
+                          <img src={item.images[0]} alt={item.name || item.fit_description} />
+                          {item.images.length > 1 && (
+                            <div className="image-indicators">
+                              {item.images.map((_, index) => (
+                                <span
+                                  key={index}
+                                  className="indicator"
+                                ></span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       ) : (
                         <div className="no-image">
                           <i className="fas fa-tshirt"></i>
@@ -500,30 +580,7 @@ function Wardrobe() {
               <h3>Add Wardrobe Item</h3>
 
               <form onSubmit={handleSubmit} className="add-item-form">
-                <div className="form-group">
-                  <label htmlFor="name">Item Name (Optional)</label>
-                  <input
-                    type="text"
-                    id="name"
-                    value={itemForm.name}
-                    onChange={(e) => setItemForm({ ...itemForm, name: e.target.value })}
-                    placeholder="E.g., Blue Denim Jacket"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="description">Description {!itemForm.image && <span className="required">*</span>}</label>
-                  <textarea
-                    id="description"
-                    value={itemForm.description}
-                    onChange={(e) => setItemForm({ ...itemForm, description: e.target.value })}
-                    placeholder="Describe your item"
-                    rows="3"
-                  ></textarea>
-                  <p className="form-hint">At least one of Description or Image is required</p>
-                </div>
-
-                {/* Item Images Section */}
+                {/* Item Images Section - Now First */}
                 <div className="form-group">
                   <label>Item Images <span className="required">*</span> (1-5 images)</label>
                   <div className="image-upload-container">
@@ -567,7 +624,20 @@ function Wardrobe() {
                       </label>
                     )}
                   </div>
-                  <p className="form-hint">Upload 1-5 images of your garment</p>
+                  <p className="form-hint">Upload 1-5 images of your garment (required)</p>
+                </div>
+
+                {/* Item Name */}
+                <div className="form-group">
+                  <label htmlFor="name">Item Name (Optional)</label>
+                  <input
+                    type="text"
+                    id="name"
+                    value={itemForm.name}
+                    onChange={(e) => setItemForm({ ...itemForm, name: e.target.value })}
+                    placeholder="E.g., Blue Denim Jacket"
+                    className="form-input"
+                  />
                 </div>
 
                 {/* Fit Description */}
@@ -579,9 +649,11 @@ function Wardrobe() {
                     onChange={(e) => setItemForm({ ...itemForm, fit_description: e.target.value })}
                     placeholder="Describe how this item fits on your body"
                     rows="3"
+                    className="form-textarea"
                   ></textarea>
                 </div>
 
+                {/* Category */}
                 <div className="form-group">
                   <label htmlFor="tag">Category <span className="required">*</span></label>
                   <select
@@ -589,6 +661,7 @@ function Wardrobe() {
                     value={itemForm.tag}
                     onChange={(e) => setItemForm({ ...itemForm, tag: e.target.value })}
                     required
+                    className="form-select"
                   >
                     <option value="">Select a category</option>
                     {tags.map(tag => (
@@ -599,6 +672,7 @@ function Wardrobe() {
                   </select>
                 </div>
 
+                {/* Status Checkboxes */}
                 <div className="form-group checkbox-group">
                   <label className="checkbox-label">
                     <input
@@ -619,6 +693,7 @@ function Wardrobe() {
                   </label>
                 </div>
 
+                {/* Form Actions */}
                 <div className="form-actions">
                   <button type="button" className="btn btn-secondary" onClick={() => setShowAddModal(false)}>
                     Cancel
@@ -629,6 +704,27 @@ function Wardrobe() {
                 </div>
               </form>
             </div>
+          </div>
+        )}
+
+        {/* Outfit Suggestion Modal */}
+        <OutfitSuggestionModal
+          isOpen={showOutfitModal}
+          onClose={() => setShowOutfitModal(false)}
+          weather={weatherData}
+        />
+
+        <EditItemModal
+          isOpen={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          item={selectedItem}
+          tags={tags}
+          onItemUpdate={handleItemUpdate}
+        />
+
+        {successMessage && (
+          <div className="success-message">
+            <p>{successMessage}</p>
           </div>
         )}
       </div>

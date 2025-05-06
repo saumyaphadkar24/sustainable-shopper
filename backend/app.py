@@ -30,7 +30,6 @@ MAX_POLLING_TIME = 120  # Maximum polling time in seconds
 POLLING_INTERVAL = 2  # Time between status checks in seconds
 WEATHER_API_KEY = os.environ.get('WEATHER_API_KEY', '')  # API key for weather service
 openai.api_key = os.environ.get('OPENAI_API_KEY', '')
-print(f'Weather api key loaded correctly: {WEATHER_API_KEY}')
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max upload size
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-for-development-only')
@@ -896,7 +895,6 @@ def get_weather(current_user):
             f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={WEATHER_API_KEY}&units=metric",
             timeout=10
         )
-        print(response.status_code)
         if response.status_code != 200:
             return jsonify({
                 'error': f'Weather API request failed with status code {response.status_code}',
@@ -908,6 +906,129 @@ def get_weather(current_user):
         
     except Exception as e:
         return jsonify({'error': f'Weather API request failed: {str(e)}'}), 500
+
+@app.route('/api/outfit-suggestions', methods=['POST'])
+@token_required
+def get_outfit_suggestions(current_user):
+    # Get request data
+    data = request.get_json()
+    
+    if not data or not data.get('occasion'):
+        return jsonify({'error': 'Occasion is required'}), 400
+    
+    # Get available wardrobe items (not in laundry or unavailable)
+    available_items = list(wardrobe_items.find({
+        'user_id': str(current_user['_id']),
+        'in_laundry': False,
+        'unavailable': False
+    }))
+    
+    if not available_items:
+        return jsonify({'error': 'No available items in your wardrobe'}), 400
+    
+    # Format the items for the API
+    formatted_items = []
+    for item in available_items:
+        formatted_item = {
+            'id': str(item['_id']),
+            'name': item.get('name', ''),
+            'category': item['category'],
+            'tag': item['tag']
+        }
+        
+        # Add AI description if available
+        if 'ai_description' in item and item['ai_description']:
+            formatted_item['ai_description'] = item['ai_description']
+        
+        # Add fit description if available
+        if 'fit_description' in item and item['fit_description']:
+            formatted_item['fit_description'] = item['fit_description']
+        
+        formatted_items.append(formatted_item)
+    
+    # Extract weather information
+    weather_data = data.get('weatherData', {})
+    weather_description = "Unknown"
+    temperature = "Unknown"
+    
+    if weather_data:
+        if 'weather' in weather_data and len(weather_data['weather']) > 0:
+            weather_description = weather_data['weather'][0].get('description', 'Unknown')
+        
+        if 'main' in weather_data and 'temp' in weather_data['main']:
+            temperature = f"{round(weather_data['main']['temp'])}°C"
+    
+    weather_info = f"Current weather: {temperature}, {weather_description}"
+    
+    # Build the prompt
+    prompt = f"""
+    You are a personal stylist helping someone choose 3 outfits from their wardrobe.
+
+    OCCASION: {data['occasion']}
+    
+    WEATHER: {weather_info}
+    
+    AVAILABLE ITEMS:
+    {json.dumps(formatted_items, indent=2)}
+    
+    Based on the occasion and weather, suggest 3 complete outfits using only the available items. For each outfit, provide styling tips.
+    
+    Format your response as a JSON object with this structure:
+    {{
+      "outfits": [
+        {{
+          "items": [
+            {{ "id": "item_id", "category": "Category" }}
+          ],
+          "styling": "Styling tips for this outfit"
+        }}
+      ]
+    }}
+    
+    Ensure each outfit is complete and appropriate for the occasion and weather. Only include items that are in the available items list.
+    """
+    
+    try:
+        # Call OpenAI API
+        response = openai.responses.create(
+            model="gpt-4.1-mini",
+            input=[{"role": "user", "content": prompt}],
+            temperature=0.7
+        )
+        
+        # Extract and parse the response
+        content = response.output_text
+        
+        # Sometimes the API returns markdown-formatted JSON, so we need to clean it up
+        if "```json" in content:
+            content = content.split("```json")[1].split("```")[0].strip()
+        elif "```" in content:
+            content = content.split("```")[1].split("```")[0].strip()
+        
+        suggestions = json.loads(content)
+        
+        for outfit in suggestions.get('outfits', []):
+            for item in outfit.get('items', []):
+                if 'id' in item:
+                    # Find the original item
+                    original_item = next((i for i in available_items if str(i['_id']) == item['id']), None)
+                    if original_item:
+                        # Add image URLs
+                        if 'images' in original_item and original_item['images']:
+                            item['images'] = original_item['images']
+                        # Add name if available
+                        if 'name' in original_item and original_item['name']:
+                            item['name'] = original_item['name']
+                        # Add tag
+                        if 'tag' in original_item:
+                            item['tag'] = original_item['tag']
+
+        return jsonify(suggestions), 200
+    
+    except Exception as e:
+        print(f"Error generating outfit suggestions: {e}")
+        return jsonify({'error': 'Failed to generate outfit suggestions'}), 500
+
 
 # Serve React frontend in production
 @app.route('/', defaults={'path': ''})
