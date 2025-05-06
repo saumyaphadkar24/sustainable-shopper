@@ -34,6 +34,7 @@ function Header() {
                 <li><Link to="/try-on" className={isActive('/try-on')}>Virtual Try-On</Link></li>
                 <li><Link to="/wardrobe" className={isActive('/wardrobe')}>My Wardrobe</Link></li>
                 <li><Link to="/history" className={isActive('/history')}>My History</Link></li>
+                <li><Link to="/alternatives" className={isActive('/alternatives')}>Sustainability</Link></li>
                 <li><Link to="/about" className={isActive('/about')}>About</Link></li>
                 <li>
                   <div className="user-menu">
