@@ -65,26 +65,32 @@ Additional components:
 ```bash
 git clone https://github.com/your-username/sustainableshopper.git
 cd sustainableshopper
+```
 
 ### 2. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
+```
 
 ### 3. Set Environment Variables
 Create a .env file in the backend/ directory or export the variables manually:
 
+```
 FASHN_AI_API_KEY=your_fashn_api_key
 WEATHER_API_KEY=your_openweathermap_api_key
 OPENAI_API_KEY=your_openai_api_key
 SECRET_KEY=your_flask_secret
+```
 
 ### 4. Start MongoDB
 
-Ensure MongoDB is running locally or configure a cloud MongoDB URI in db.py.
+Ensure MongoDB is running locally or configure a cloud MongoDB URI in `db.py`.
 
 ### 5. Run the Application
+```
 python backend/app.py
+```
 
 Visit the app at: http://localhost:5001
 
@@ -118,6 +124,8 @@ We welcome PRs and issue reports. Please fork the repository and open a pull req
 MIT License. See the LICENSE file for details.
 
 ## 🙌 Acknowledgements
+```
 OpenAI
 Fashn.ai
 OpenWeatherMap
+```
