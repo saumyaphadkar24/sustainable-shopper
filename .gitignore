@@ -2,9 +2,11 @@
 backend/.env
 __pycache__/
 
-
 # Ignore node_modules
 frontend/node_modules/
 
 # Ignore the virtual environment
 venv/
+
+# Ignore macOS system files
+.DS_Store

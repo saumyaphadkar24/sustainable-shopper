@@ -1,0 +1,10 @@
+{
+    "short_name": "SustainableShopper",
+    "name": "Sustainable Shopper",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "description": "Try before you buy. Save the planet.",
+    "theme_color": "#2e8b57",
+    "icons": []
+  }
